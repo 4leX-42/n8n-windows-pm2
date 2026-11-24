@@ -1,80 +1,65 @@
-# n8n on Windows via pm2 (no Docker)
+<div align="center">
 
-Self-hosted [n8n](https://n8n.io) running as a native Node.js process managed by [pm2](https://pm2.keymetrics.io) on Windows. No WSL2, no Hyper-V, no Docker — useful when virtualization is disabled or conflicts with VMware/VirtualBox.
+# n8n on Windows · pm2
 
-- UI: `http://localhost:5678` (bound to `127.0.0.1`)
-- Manual lifecycle: nothing runs at boot; start/stop via shortcuts
-- Portable config: paths resolved at runtime, no hardcoded user paths
+Self-hosted [n8n](https://n8n.io) as a native Node.js process under [pm2](https://pm2.keymetrics.io). No Docker, WSL2 or Hyper-V.
 
-## Requirements
+![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-1f1f1f?style=flat-square) ![Node.js](https://img.shields.io/badge/Node.js-18+-1f1f1f?style=flat-square&logo=nodedotjs&logoColor=white) ![pm2](https://img.shields.io/badge/pm2-1f1f1f?style=flat-square&logo=pm2&logoColor=white) ![n8n](https://img.shields.io/badge/n8n-localhost:5678-ea4b71?style=flat-square&logo=n8n&logoColor=white)
 
-- Windows 10/11
-- Node.js 18+ (`node --version`)
+</div>
 
-## Install
+## <img src="https://api.iconify.design/lucide/download.svg?color=%238b949e" width="18" align="top"> Install
 
 ```powershell
 npm install -g n8n pm2
 git clone https://github.com/4leX-42/n8n-windows-pm2.git
 cd n8n-windows-pm2
-.\install.ps1          # creates Desktop + Start Menu shortcuts
+.\install.ps1                       # Desktop + Start Menu shortcuts
+pm2 start .\ecosystem.config.js     # first run
 ```
 
-First run:
+## <img src="https://api.iconify.design/lucide/play.svg?color=%238b949e" width="18" align="top"> Use
 
-```powershell
-pm2 start .\ecosystem.config.js
-```
-
-## Usage
-
-| Action | Shortcut | Command |
+| | Shortcut | Command |
 |---|---|---|
-| Start + open UI | **n8n** | `pm2 start ecosystem.config.js` |
-| Stop everything | **Stop n8n** | `pm2 delete n8n; pm2 kill` |
-| Status | — | `pm2 list` |
-| Live logs | — | `pm2 logs n8n` |
+| <img src="https://api.iconify.design/lucide/play.svg?color=%238b949e" width="18" align="top"> Start + open UI | **n8n** | `pm2 start ecosystem.config.js` |
+| <img src="https://api.iconify.design/lucide/power.svg?color=%238b949e" width="18" align="top"> Stop everything | **Stop n8n** | `pm2 delete n8n; pm2 kill` |
+| <img src="https://api.iconify.design/lucide/list.svg?color=%238b949e" width="18" align="top"> Status | — | `pm2 list` |
+| <img src="https://api.iconify.design/lucide/terminal.svg?color=%238b949e" width="18" align="top"> Live logs | — | `pm2 logs n8n` |
 
-The **n8n** shortcut runs `start-n8n.ps1` (via a hidden `.vbs`): starts pm2 + n8n, waits for `/healthz`, then opens the UI in an app-style browser window (Edge → Chrome → default). **Stop n8n** runs `pm2 kill`, terminating the daemon and every child process.
+UI on `127.0.0.1:5678`. Nothing runs at boot. Killing `node.exe` won't stop it (pm2 respawns): use **Stop n8n**.
 
-> Killing `node.exe` from Task Manager won't work — pm2 respawns it. Use **Stop n8n**.
+<details>
+<summary><img src="https://api.iconify.design/lucide/settings-2.svg?color=%238b949e" width="18" align="top"> <b>Configuration</b></summary>
 
-## Configuration
-
-Environment set in `ecosystem.config.js`:
+Set in `ecosystem.config.js`:
 
 | Var | Value | Purpose |
 |---|---|---|
 | `N8N_USER_FOLDER` | `./data` | workflows, sqlite DB, credentials |
 | `N8N_PORT` | `5678` | UI port |
-| `N8N_LISTEN_ADDRESS` | `127.0.0.1` | localhost only (set `0.0.0.0` for LAN) |
+| `N8N_LISTEN_ADDRESS` | `127.0.0.1` | localhost only (`0.0.0.0` for LAN) |
 | `GENERIC_TIMEZONE` / `TZ` | `Europe/Madrid` | cron/schedule timezone |
-| `N8N_SECURE_COOKIE` | `false` | allow login over plain http |
-| `N8N_DIAGNOSTICS_ENABLED` | `false` | disable telemetry |
+| `N8N_SECURE_COOKIE` | `false` | login over plain http |
+| `N8N_DIAGNOSTICS_ENABLED` | `false` | no telemetry |
 
-`n8nBin` and the pm2 path are resolved dynamically (`npm root -g`, `Get-Command pm2`), so the repo drops in on any user account.
+`n8nBin` and the pm2 path are resolved at runtime (`npm root -g`, `Get-Command pm2`): works on any user account. The **n8n** shortcut runs `start-n8n.ps1` through a hidden `.vbs`, waits for `/healthz` and opens the UI in an app window (Edge, Chrome or default).
+</details>
 
-## Data & backup
+<details>
+<summary><img src="https://api.iconify.design/lucide/database.svg?color=%238b949e" width="18" align="top"> <b>Data and backup</b></summary>
 
-Everything lives in `data/.n8n/` (git-ignored):
-
-- `database.sqlite` — all workflows, credentials, executions, users
-- `config` — **encryption key**; without it, backed-up credentials are unrecoverable
-
-Backup (stop first to avoid a half-written DB):
+Everything lives in `data/.n8n/` (git-ignored): `database.sqlite` (workflows, credentials, executions, users) and `config` (**encryption key**: without it, backed-up credentials are unrecoverable).
 
 ```powershell
 pm2 stop n8n
 Copy-Item .\data\.n8n\database.sqlite, .\data\.n8n\config <dest>
+n8n export:workflow --all --output=workflows.json   # portable JSON
 ```
+</details>
 
-Portable JSON export:
-
-```powershell
-n8n export:workflow --all --output=workflows.json
-```
-
-## Auto-start at logon (optional)
+<details>
+<summary><img src="https://api.iconify.design/lucide/log-in.svg?color=%238b949e" width="18" align="top"> <b>Auto-start at logon</b></summary>
 
 ```powershell
 npm install -g pm2-windows-startup
@@ -84,8 +69,6 @@ pm2 save
 ```
 
 Disable: `pm2-startup uninstall`.
+</details>
 
-## Notes
-
-- Python code nodes require a Python venv (not set up here); the JS task runner works out of the box.
-- Running n8n outside a container is deprecated upstream; migrate to the official Docker image once virtualization is available.
+<sub>Python code nodes need a Python venv (not set up here). Running n8n outside a container is deprecated upstream: move to the official Docker image once virtualization is available.</sub>
